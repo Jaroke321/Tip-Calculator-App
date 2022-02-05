@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -39,7 +40,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             myApp {
-                //TopHeader()
                 MainContent()
             }
         }
@@ -65,7 +65,7 @@ fun TopHeader(totalPerPerson: Double = 321.00) {
         .padding(20.dp)
         .height(150.dp)
         .clip(shape = RoundedCornerShape(corner = CornerSize(12.dp))),
-        color = Color(0xFFE9D7F7)) {
+        color = Color(0xFFBB86FC)) {
 
         // Inside the Top Header value surface
 
@@ -94,9 +94,14 @@ fun TopHeader(totalPerPerson: Double = 321.00) {
 @Composable
 fun MainContent() {
 
-    BillForm() { billAmount ->
+    val totalPerPerson = remember {
+        mutableStateOf(0.00)
+    }
+
+    BillForm(total = totalPerPerson) { billAmount ->
 
         // Pass in function for on value change in the bill form
+        totalPerPerson.value = billAmount.toDouble()
 
     }
 
@@ -104,7 +109,7 @@ fun MainContent() {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) {
+fun BillForm(modifier: Modifier = Modifier, total: MutableState<Double>, onValChange: (String) -> Unit = {}) {
 
     // Holds the cost of the bill
     val totalBillState = remember {
@@ -126,24 +131,34 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
         mutableStateOf(0.2f)
     }
 
+    // Tip State
+    val tip = remember {
+        mutableStateOf(0f)
+    }
+
     // Keyboard controller to show or hide keyboard
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    // Column to hold totalPerPerson and the input surface
     Column(modifier = Modifier.padding(3.dp)) {
 
-        TopHeader()
+        TopHeader(total.value) // TotalPerPerson header
 
+        // Main Surface to hold user input
         Surface(modifier = Modifier
             .padding(2.dp)
             .fillMaxWidth(),
             shape = RoundedCornerShape(corner = CornerSize(8.dp)),
             border = BorderStroke(width = 1.dp, color = Color.LightGray)) {
 
+            // Column to hold all of the fields
             Column(modifier = Modifier.padding(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Top,) {
 
                 // Inside of bottom column
+
+                // Input text, Bill amount in Dollars
                 InputField(valueState = totalBillState,
                     labelId = "Enter Bill",
                     enabled = true,
@@ -151,7 +166,7 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
                     onAction = KeyboardActions {
                         if (!validState) return@KeyboardActions
 
-                        onValChange(totalBillState.value.trim())
+                        //onValChange(totalBillState.value.trim())
 
                         // Value has changed
                         keyboardController?.hide()
@@ -193,7 +208,12 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
                         // Plus Button
                         RoundIconButton(modifier = Modifier,
                             imageVector = Icons.Default.Add,
-                            onClick = { splitNumber.value += 1 }) // Increment the split number value
+                            onClick = {
+                                // Only add to the number if there are less than 50
+                                if(splitNumber.value < 50) {
+                                    splitNumber.value += 1
+                                }
+                            }) // Increment the split number value
 
                     } // End plus and minus row
 
@@ -205,15 +225,8 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
                     Text(text = "Tip", modifier = Modifier.align(alignment = Alignment.CenterVertically))
                     Spacer(modifier = Modifier.width(200.dp))
 
-                    // Calculate the total tip amount
-                    var tip = 0.0f
-                    // Change the tip if there is a valid value in the bill input box
-                    if (validState) {
-                        tip = totalBillState.value.toFloat() * sliderPositionState.value
-                    }
-
                     // Display the tip amount
-                    Text(text = "$%.2f".format(tip))
+                    Text(text = "$%.2f".format(tip.value))
 
                 } // End Tip Row
 
@@ -238,9 +251,21 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
 
                 } // End Slider column
 
-            } // end of main column
-        }
+            } // end of main column for the input
+        } // End of surface
 
+    } // End of column of the whole app including the total per person
+
+    // Calculate the bill per person
+    if(validState) {
+        val bill = totalBillState.value.toFloat()     // Get bill from user input
+        tip.value = bill * sliderPositionState.value  // get the tip amount
+        val total = bill + tip.value                  // Total bill
+        val perPerson = total / splitNumber.value     // Divide by number of people
+
+        onValChange(perPerson.toString())             // Call lambda to update UI
+    } else {
+        onValChange("0.00")
     }
 
 }
