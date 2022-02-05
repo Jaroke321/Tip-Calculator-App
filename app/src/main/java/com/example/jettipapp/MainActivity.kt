@@ -1,6 +1,7 @@
 package com.example.jettipapp
 
 import android.os.Bundle
+import android.widget.Space
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -9,6 +10,7 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Slider
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
@@ -24,11 +26,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.jettipapp.components.InputField
 import com.example.jettipapp.ui.theme.JetTipAppTheme
 import com.example.jettipapp.widgets.RoundIconButton
+import java.lang.Math.round
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,6 +62,7 @@ fun TopHeader(totalPerPerson: Double = 321.00) {
     
     Surface(modifier = Modifier
         .fillMaxWidth()
+        .padding(20.dp)
         .height(150.dp)
         .clip(shape = RoundedCornerShape(corner = CornerSize(12.dp))),
         color = Color(0xFFE9D7F7)) {
@@ -116,39 +121,46 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
         mutableStateOf(1)
     }
 
+    // Holds the state of the slider
+    val sliderPositionState = remember {
+        mutableStateOf(0.2f)
+    }
+
     // Keyboard controller to show or hide keyboard
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    Surface(modifier = Modifier
-        .padding(2.dp)
-        .fillMaxWidth(),
-        shape = RoundedCornerShape(corner = CornerSize(8.dp)),
-        border = BorderStroke(width = 1.dp, color = Color.LightGray)) {
+    Column(modifier = Modifier.padding(3.dp)) {
 
-        Column(modifier = Modifier.padding(6.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,) {
+        TopHeader()
 
-            // Inside of bottom column
-            InputField(valueState = totalBillState,
-                labelId = "Enter Bill",
-                enabled = true,
-                isSingleLine = true,
-                onAction = KeyboardActions {
-                    if (!validState) return@KeyboardActions
+        Surface(modifier = Modifier
+            .padding(2.dp)
+            .fillMaxWidth(),
+            shape = RoundedCornerShape(corner = CornerSize(8.dp)),
+            border = BorderStroke(width = 1.dp, color = Color.LightGray)) {
 
-                    onValChange(totalBillState.value.trim())
+            Column(modifier = Modifier.padding(6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Top,) {
 
-                    // Value has changed
-                    keyboardController?.hide()
-                })
+                // Inside of bottom column
+                InputField(valueState = totalBillState,
+                    labelId = "Enter Bill",
+                    enabled = true,
+                    isSingleLine = true,
+                    onAction = KeyboardActions {
+                        if (!validState) return@KeyboardActions
 
-            // Once bill amount is entered, the rest of the UI must be rendered
-            if (validState) {
+                        onValChange(totalBillState.value.trim())
+
+                        // Value has changed
+                        keyboardController?.hide()
+                    })
+
                 // Create Row for the number of splits
                 Row(modifier = Modifier.padding(3.dp),
                     horizontalArrangement = Arrangement.Start) {
-                    
+
                     Text(
                         text = "Split",
                         modifier = Modifier.align(alignment = Alignment.CenterVertically)
@@ -184,19 +196,56 @@ fun BillForm(modifier: Modifier = Modifier, onValChange: (String) -> Unit = {}) 
                             onClick = { splitNumber.value += 1 }) // Increment the split number value
 
                     } // End plus and minus row
-                    
+
                 } // End Split row
 
-            } else {
-                Box() {}
-            }
+                // Tip Row
+                Row(modifier = Modifier.padding(vertical = 12.dp)) {
 
+                    Text(text = "Tip", modifier = Modifier.align(alignment = Alignment.CenterVertically))
+                    Spacer(modifier = Modifier.width(200.dp))
+
+                    // Calculate the total tip amount
+                    var tip = 0.0f
+                    // Change the tip if there is a valid value in the bill input box
+                    if (validState) {
+                        tip = totalBillState.value.toFloat() * sliderPositionState.value
+                    }
+
+                    // Display the tip amount
+                    Text(text = "$%.2f".format(tip))
+
+                } // End Tip Row
+
+                // Column for Percent and slider
+                Column(verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally) {
+
+                    // Calculate the percent value of the slider position
+                    val percent = (sliderPositionState.value * 100).toInt()
+
+                    Text(text = "$percent%")
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Slider
+                    Slider(value = sliderPositionState.value,
+                        steps = 19,
+                        modifier = Modifier.padding(start = 10.dp, end = 10.dp),
+                        onValueChange = { newVal ->
+                            sliderPositionState.value = newVal
+                        })
+
+                } // End Slider column
+
+            } // end of main column
         }
+
     }
 
 }
 
-@Preview(showBackground = true)
+//@Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
     JetTipAppTheme {
